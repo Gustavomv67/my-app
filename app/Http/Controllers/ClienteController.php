@@ -44,9 +44,17 @@ class ClienteController extends Controller
     // Validar e salvar um novo cliente
     public function store(Request $request): RedirectResponse
     {
+        $request->merge([
+            'cpf' => preg_replace('/\D/', '', $request->input('cpf', '')),
+        ]);
         $dados = $request->validate([
             'nome' => ['required', 'string', 'max:255'],
-            'cpf' => ['required', 'string', 'max:14', 'unique:clientes,cpf'],
+            'cpf' => [
+                'required',
+                'string',
+                'regex:/^\d{11}$/',
+                'unique:clientes,cpf',
+            ],
             'email' => ['required', 'email', 'max:255', 'unique:clientes,email'],
             'telefone' => ['nullable', 'string', 'max:20'],
             'endereco' => ['nullable', 'string', 'max:255'],
@@ -105,5 +113,34 @@ class ClienteController extends Controller
         return redirect()
             ->route('clientes.index')
             ->with('success', 'Cliente excluído com sucesso.');
+    }
+
+    public function verificarDuplicidade(Request $request)
+    {
+        $dados = $request->validate([
+            'campo' => ['required', 'in:cpf,email'],
+            'valor' => ['required', 'string', 'max:255'],
+        ]);
+
+        $valor = trim($dados['valor']);
+
+        if ($dados['campo'] === 'cpf') {
+            $valor = preg_replace('/\D/', '', $dados['valor']);
+
+            if (strlen($valor) !== 11) {
+                return response()->json(['existe' => false]);
+            }
+
+            $existe = Cliente::whereRaw(
+                "REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), ' ', '') = ?",
+                [$valor]
+            )->exists();
+        } else {
+            $existe = Cliente::where('email', $valor)->exists();
+        }
+
+        return response()->json([
+            'existe' => $existe,
+        ]);
     }
 }

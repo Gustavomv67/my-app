@@ -1,14 +1,8 @@
-
 import { Head, Link, useForm } from "@inertiajs/react";
 import type { FormEvent } from "react";
+import { useEffect, useState, useRef } from "react";
 import { IMaskInput } from "react-imask";
-import {
-    ArrowLeft,
-    Database,
-    Save,
-    UserRound,
-    UsersRound,
-} from "lucide-react";
+import { ArrowLeft, Database, Save, UserRound, UsersRound } from "lucide-react";
 
 interface ClienteForm {
     nome: string;
@@ -19,17 +13,143 @@ interface ClienteForm {
 }
 
 export default function Create() {
-    const { data, setData, post, processing, errors } =
-        useForm<ClienteForm>({
-            nome: "",
-            cpf: "",
-            email: "",
-            telefone: "",
-            endereco: "",
-        });
+    const { data, setData, post, processing, errors } = useForm<ClienteForm>({
+        nome: "",
+        cpf: "",
+        email: "",
+        telefone: "",
+        endereco: "",
+    });
+
+    const [cpfExiste, setCpfExiste] = useState<boolean | null>(null);
+    const [emailExiste, setEmailExiste] = useState<boolean | null>(null);
+
+    const [verificandoCpf, setVerificandoCpf] = useState(false);
+    const [verificandoEmail, setVerificandoEmail] = useState(false);
+
+    const cpfRef = useRef<HTMLInputElement>(null);
+    const emailRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const cpf = data.cpf.replace(/\D/g, "");
+
+        setCpfExiste(null);
+
+        if (cpf.length !== 11) {
+            setVerificandoCpf(false);
+            return;
+        }
+
+        let cancelado = false;
+
+        const timer = setTimeout(async () => {
+            setVerificandoCpf(true);
+
+            try {
+                const resposta = await fetch(
+                    `/clientes/verificar?campo=cpf&valor=${encodeURIComponent(cpf)}`,
+                    {
+                        headers: { Accept: "application/json" },
+                    },
+                );
+
+                if (!resposta.ok) {
+                    throw new Error("Falha na consulta");
+                }
+
+                const resultado: { existe: boolean } = await resposta.json();
+
+                if (!cancelado) {
+                    setCpfExiste(resultado.existe);
+                }
+            } catch {
+                if (!cancelado) {
+                    setCpfExiste(null);
+                }
+            } finally {
+                if (!cancelado) {
+                    setVerificandoCpf(false);
+                }
+            }
+        }, 500);
+
+        return () => {
+            cancelado = true;
+            clearTimeout(timer);
+        };
+    }, [data.cpf]);
+
+    useEffect(() => {
+        const email = data.email.trim();
+
+        setEmailExiste(null);
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setVerificandoEmail(false);
+            return;
+        }
+
+        let cancelado = false;
+
+        const timer = setTimeout(async () => {
+            setVerificandoEmail(true);
+
+            try {
+                const resposta = await fetch(
+                    `/clientes/verificar?campo=email&valor=${encodeURIComponent(email)}`,
+                    {
+                        headers: { Accept: "application/json" },
+                    },
+                );
+
+                if (!resposta.ok) {
+                    throw new Error("Falha na consulta");
+                }
+
+                const resultado: { existe: boolean } = await resposta.json();
+
+                if (!cancelado) {
+                    setEmailExiste(resultado.existe);
+                }
+            } catch {
+                if (!cancelado) {
+                    setEmailExiste(null);
+                }
+            } finally {
+                if (!cancelado) {
+                    setVerificandoEmail(false);
+                }
+            }
+        }, 500);
+
+        return () => {
+            cancelado = true;
+            clearTimeout(timer);
+        };
+    }, [data.email]);
 
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
+
+        if (cpfExiste === true) {
+            cpfRef.current?.focus();
+            return;
+        }
+
+        if (emailExiste === true) {
+            emailRef.current?.focus();
+            return;
+        }
+
+        if (
+            verificandoCpf ||
+            verificandoEmail ||
+            cpfExiste === null ||
+            emailExiste === null
+        ) {
+            return;
+        }
+
         post("/clientes");
     }
 
@@ -148,7 +268,10 @@ export default function Create() {
                                             autoComplete="name"
                                             value={data.nome}
                                             onChange={(event) =>
-                                                setData("nome", event.target.value)
+                                                setData(
+                                                    "nome",
+                                                    event.target.value,
+                                                )
                                             }
                                             className={inputClass}
                                             placeholder="Digite o nome completo"
@@ -174,10 +297,14 @@ export default function Create() {
                                             name="cpf"
                                             mask="000.000.000-00"
                                             inputMode="numeric"
+                                            inputRef={cpfRef}
                                             autoComplete="off"
                                             value={data.cpf}
                                             onChange={(event) =>
-                                                setData("cpf", event.target.value)
+                                                setData(
+                                                    "cpf",
+                                                    event.target.value,
+                                                )
                                             }
                                             className={inputClass}
                                             placeholder="000.000.000-00"
@@ -189,8 +316,29 @@ export default function Create() {
                                                 {errors.cpf}
                                             </p>
                                         )}
+                                        {verificandoCpf && (
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                Verificando CPF...
+                                            </p>
+                                        )}
+
+                                        {!verificandoCpf &&
+                                            cpfExiste === true && (
+                                                <p className="mt-2 text-sm text-red-600">
+                                                    Este CPF já está cadastrado.
+                                                </p>
+                                            )}
+
+                                        {!verificandoCpf &&
+                                            cpfExiste === false && (
+                                                <p className="mt-2 text-sm text-emerald-600">
+                                                    CPF disponível.
+                                                </p>
+                                            )}
+
                                         <p className="mt-2 text-xs text-slate-400">
-                                            O CPF não poderá ser alterado depois.
+                                            O CPF não poderá ser alterado
+                                            depois.
                                         </p>
                                     </div>
 
@@ -201,15 +349,18 @@ export default function Create() {
                                         >
                                             E-mail *
                                         </label>
-                                        <IMaskInput
+                                        <input
                                             id="email"
                                             name="email"
                                             type="email"
-                                            mask="email"
                                             autoComplete="email"
+                                            ref={emailRef}
                                             value={data.email}
                                             onChange={(event) =>
-                                                setData("email", event.target.value)
+                                                setData(
+                                                    "email",
+                                                    event.target.value,
+                                                )
                                             }
                                             className={inputClass}
                                             placeholder="cliente@exemplo.com"
@@ -221,6 +372,26 @@ export default function Create() {
                                                 {errors.email}
                                             </p>
                                         )}
+                                        {verificandoEmail && (
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                Verificando e-mail...
+                                            </p>
+                                        )}
+
+                                        {!verificandoEmail &&
+                                            emailExiste === true && (
+                                                <p className="mt-2 text-sm text-red-600">
+                                                    Este e-mail já está
+                                                    cadastrado.
+                                                </p>
+                                            )}
+
+                                        {!verificandoEmail &&
+                                            emailExiste === false && (
+                                                <p className="mt-2 text-sm text-emerald-600">
+                                                    E-mail disponível.
+                                                </p>
+                                            )}
                                     </div>
 
                                     <div>
@@ -230,10 +401,11 @@ export default function Create() {
                                         >
                                             Telefone
                                         </label>
-                                        <input
+                                        <IMaskInput
                                             id="telefone"
                                             name="telefone"
                                             type="tel"
+                                            mask="(00) 00000-0000"
                                             autoComplete="tel"
                                             value={data.telefone}
                                             onChange={(event) =>

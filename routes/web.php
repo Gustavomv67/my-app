@@ -8,6 +8,9 @@ Route::inertia('/', 'welcome')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
+    Route::get('/clientes/verificar', [ClienteController::class,'verificarDuplicidade',])
+        ->name('clientes.verificar');
+
     // Listar e pesquisar clientes
     Route::get('/clientes', [ClienteController::class, 'index'])
         ->name('clientes.index');

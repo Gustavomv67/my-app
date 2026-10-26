@@ -1,4 +1,4 @@
-import { Head, router } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import { useState, type FormEvent } from "react";
 import {
     LayoutDashboard,
@@ -13,6 +13,8 @@ import {
     ArrowUpRight,
     Database,
     X,
+    Pencil,
+    Trash2,
 } from "lucide-react";
 
 interface Cliente {
@@ -65,7 +67,10 @@ function formatarCpf(cpf: string): string {
         return cpf;
     }
 
-    return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    return numeros.replace(
+        /(\d{3})(\d{3})(\d{3})(\d{2})/,
+        "$1.$2.$3-$4",
+    );
 }
 
 export default function Index({ clientes, filtros }: Props) {
@@ -97,6 +102,18 @@ export default function Index({ clientes, filtros }: Props) {
                 replace: true,
             },
         );
+    }
+
+    function excluirCliente(cliente: Cliente) {
+        const confirmou = window.confirm(
+            `Deseja realmente excluir o cliente ${cliente.nome}?`,
+        );
+
+        if (confirmou) {
+            router.delete(`/clientes/${cliente.id}`, {
+                preserveScroll: true,
+            });
+        }
     }
 
     const linksPaginas = clientes.links.slice(1, -1);
@@ -226,13 +243,12 @@ export default function Index({ clientes, filtros }: Props) {
                                 </p>
                             </div>
 
-                            <div className="flex items-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm sm:self-auto">
-                                <UsersRound
-                                    size={18}
-                                    className="text-indigo-600"
-                                />
-                                <span>Base de clientes</span>
-                            </div>
+                            <Link
+                                href="/clientes/create"
+                                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                            >
+                                + Novo cliente
+                            </Link>
                         </div>
 
                         <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -374,7 +390,7 @@ export default function Index({ clientes, filtros }: Props) {
                             </div>
 
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-[760px] text-left">
+                                <table className="w-full min-w-[900px] text-left">
                                     <thead>
                                         <tr className="border-b border-slate-100 bg-white">
                                             <th className="px-7 py-4 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
@@ -389,6 +405,9 @@ export default function Index({ clientes, filtros }: Props) {
                                             <th className="px-5 py-4 text-right text-[11px] font-bold tracking-wider text-slate-400 uppercase">
                                                 Cadastro
                                             </th>
+                                            <th className="px-5 py-4 text-right text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                                                Ações
+                                            </th>
                                         </tr>
                                     </thead>
 
@@ -398,23 +417,23 @@ export default function Index({ clientes, filtros }: Props) {
                                                 (cliente, index) => (
                                                     <tr
                                                         key={cliente.id}
-                                                        className="transition hover:bg-indigo-50/30"
+                                                        onClick={() =>
+                                                            router.visit(
+                                                                `/clientes/${cliente.id}`,
+                                                            )
+                                                        }
+                                                        className="cursor-pointer transition hover:bg-indigo-50/50"
+                                                        title="Clique para visualizar os dados do cliente"
                                                     >
                                                         <td className="px-7 py-4">
                                                             <div className="flex items-center gap-3">
                                                                 <div
                                                                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${
-                                                                        index %
-                                                                            4 ===
-                                                                        0
+                                                                        index % 4 === 0
                                                                             ? "bg-violet-100 text-violet-700"
-                                                                            : index %
-                                                                                    4 ===
-                                                                                1
+                                                                            : index % 4 === 1
                                                                               ? "bg-sky-100 text-sky-700"
-                                                                              : index %
-                                                                                      4 ===
-                                                                                  2
+                                                                              : index % 4 === 2
                                                                                 ? "bg-emerald-100 text-emerald-700"
                                                                                 : "bg-amber-100 text-amber-700"
                                                                     }`}
@@ -426,15 +445,10 @@ export default function Index({ clientes, filtros }: Props) {
 
                                                                 <div className="min-w-0">
                                                                     <p className="max-w-[220px] truncate text-sm font-semibold text-slate-800">
-                                                                        {
-                                                                            cliente.nome
-                                                                        }
+                                                                        {cliente.nome}
                                                                     </p>
                                                                     <p className="mt-1 text-xs text-slate-400">
-                                                                        ID #
-                                                                        {
-                                                                            cliente.id
-                                                                        }
+                                                                        ID #{cliente.id}
                                                                     </p>
                                                                 </div>
                                                             </div>
@@ -450,10 +464,7 @@ export default function Index({ clientes, filtros }: Props) {
 
                                                         <td className="px-5 py-4">
                                                             <span
-                                                                title={
-                                                                    cliente.email ??
-                                                                    ""
-                                                                }
+                                                                title={cliente.email ?? ""}
                                                                 className="block max-w-[220px] truncate text-sm text-slate-600"
                                                             >
                                                                 {cliente.email ??
@@ -463,11 +474,41 @@ export default function Index({ clientes, filtros }: Props) {
 
                                                         <td className="px-5 py-4 text-right">
                                                             <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-400">
-                                                                <ArrowUpRight
-                                                                    size={14}
-                                                                />
+                                                                <ArrowUpRight size={14} />
                                                                 Cadastrado
                                                             </span>
+                                                        </td>
+
+                                                        <td className="px-5 py-4">
+                                                            <div
+                                                                className="flex items-center justify-end gap-2"
+                                                                onClick={(event) =>
+                                                                    event.stopPropagation()
+                                                                }
+                                                            >
+                                                                <Link
+                                                                    href={`/clientes/${cliente.id}/edit`}
+                                                                    aria-label={`Editar ${cliente.nome}`}
+                                                                    title="Editar cliente"
+                                                                    className="rounded-lg border border-indigo-200 p-2 text-indigo-600 transition hover:bg-indigo-50"
+                                                                >
+                                                                    <Pencil size={16} />
+                                                                </Link>
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        excluirCliente(
+                                                                            cliente,
+                                                                        )
+                                                                    }
+                                                                    aria-label={`Excluir ${cliente.nome}`}
+                                                                    title="Excluir cliente"
+                                                                    className="rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ),
@@ -482,18 +523,14 @@ export default function Index({ clientes, filtros }: Props) {
                                                         <Search size={25} />
                                                     </div>
                                                     <p className="font-semibold text-slate-800">
-                                                        Nenhum cliente
-                                                        encontrado
+                                                        Nenhum cliente encontrado
                                                     </p>
                                                     <p className="mt-1 text-sm text-slate-500">
-                                                        Tente pesquisar por
-                                                        outro nome ou CPF.
+                                                        Tente pesquisar por outro nome ou CPF.
                                                     </p>
                                                     {filtros.busca && (
                                                         <button
-                                                            onClick={
-                                                                limparBusca
-                                                            }
+                                                            onClick={limparBusca}
                                                             className="mt-4 text-sm font-semibold text-indigo-600 hover:text-indigo-800"
                                                         >
                                                             Limpar pesquisa
@@ -544,9 +581,7 @@ export default function Index({ clientes, filtros }: Props) {
                                             key={`${link.label}-${index}`}
                                             type="button"
                                             disabled={!link.url || link.active}
-                                            aria-current={
-                                                link.active ? "page" : undefined
-                                            }
+                                            aria-current={link.active ? "page" : undefined}
                                             onClick={() => {
                                                 if (link.url) {
                                                     router.visit(link.url, {
